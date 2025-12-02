@@ -248,7 +248,7 @@ public class GameActivity extends AppCompatActivity {
     private void updateUI(JSONObject game) {
         try {
             String board = game.getString("board");
-            char[] boardArray = board. toCharArray();
+            char[] boardArray = board.toCharArray();
 
             // Update board buttons
             for (int i = 0; i < 9; i++) {
@@ -259,10 +259,29 @@ public class GameActivity extends AppCompatActivity {
                 }
             }
 
-            // Update scores
-            player1ScoreText.setText(String.valueOf(game.getInt("player1_score")));
-            player2ScoreText.setText(String.valueOf(game.getInt("player2_score")));
-            drawScoreText.setText(String.valueOf(game.getInt("draw_count")));
+            // Update scores FROM CURRENT PLAYER'S PERSPECTIVE
+            int player1Score = game.getInt("player1_score");
+            int player2Score = game.getInt("player2_score");
+            int draws = game.getInt("draw_count");
+
+            // Determine which score is "mine" and which is "opponent's"
+            int myScore = 0;
+            int opponentScore = 0;
+
+            if (playerId. equals(player1Id)) {
+                // I am player 1
+                myScore = player1Score;
+                opponentScore = player2Score;
+            } else {
+                // I am player 2
+                myScore = player2Score;
+                opponentScore = player1Score;
+            }
+
+            // Display: My wins, Draws, My losses (opponent wins)
+            player1ScoreText.setText(String.valueOf(myScore));
+            drawScoreText.setText(String.valueOf(draws));
+            player2ScoreText.setText(String.valueOf(opponentScore));
 
             // Update turn indicators
             String status = game.getString("status");
@@ -272,7 +291,7 @@ public class GameActivity extends AppCompatActivity {
                     player1Indicator.setBackgroundColor(Color.parseColor("#4CAF50"));
                     player2Indicator.setBackgroundColor(Color.parseColor("#CCCCCC"));
                 } else {
-                    player1Indicator. setBackgroundColor(Color.parseColor("#CCCCCC"));
+                    player1Indicator.setBackgroundColor(Color.parseColor("#CCCCCC"));
                     player2Indicator.setBackgroundColor(Color.parseColor("#FF9800"));
                 }
             }
