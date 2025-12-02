@@ -1,17 +1,19 @@
-package com.jmccanizares.tictactoe;
+package com. jmccanizares.tictactoe;
 
-import android.app.Dialog;
+import android. app.Dialog;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.Handler;
+import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.widget. TextView;
+import android.widget. Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.jmccanizares.tictactoe.api.ApiHelper;
@@ -20,6 +22,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class GameActivity extends AppCompatActivity {
+    private static final String TAG = "GameActivity";
+    private static final long POLLING_INTERVAL = 1000; // 1 second
+
     private Button[] boardButtons = new Button[9];
     private TextView player1ScoreText;
     private TextView player2ScoreText;
@@ -39,6 +44,7 @@ public class GameActivity extends AppCompatActivity {
     private JSONObject currentGame;
     private Handler pollHandler;
     private Runnable pollRunnable;
+    private boolean isPolling = true;
 
     private String playerSymbol;
     private String opponentSymbol;
@@ -57,10 +63,10 @@ public class GameActivity extends AppCompatActivity {
         player2Id = getIntent().getStringExtra("player2Id");
 
         String player1Symbol = getIntent().getStringExtra("player1Symbol");
-        String player2Symbol = getIntent().getStringExtra("player2Symbol");
+        String player2Symbol = getIntent(). getStringExtra("player2Symbol");
 
         // Determine player symbol based on player ID
-        if (playerId.equals(player1Id)) {
+        if (playerId. equals(player1Id)) {
             playerSymbol = player1Symbol;
             opponentSymbol = player2Symbol;
         } else {
@@ -79,23 +85,23 @@ public class GameActivity extends AppCompatActivity {
         player2ScoreText = findViewById(R.id.player2ScoreText);
         drawScoreText = findViewById(R.id.drawScoreText);
         player1Indicator = findViewById(R.id.player1Indicator);
-        player2Indicator = findViewById(R.id.player2Indicator);
+        player2Indicator = findViewById(R.id. player2Indicator);
         player1SymbolText = findViewById(R.id.player1SymbolText);
-        player2SymbolText = findViewById(R.id.player2SymbolText);
+        player2SymbolText = findViewById(R. id.player2SymbolText);
         refreshButton = findViewById(R.id.refreshButton);
 
-        player1SymbolText.setText(player1Symbol);
+        player1SymbolText. setText(player1Symbol);
         player2SymbolText.setText(player2Symbol);
 
         // Initialize board buttons
         boardButtons[0] = findViewById(R.id.button0);
-        boardButtons[1] = findViewById(R.id.button1);
+        boardButtons[1] = findViewById(R. id.button1);
         boardButtons[2] = findViewById(R.id.button2);
         boardButtons[3] = findViewById(R.id.button3);
         boardButtons[4] = findViewById(R.id.button4);
         boardButtons[5] = findViewById(R.id.button5);
         boardButtons[6] = findViewById(R.id.button6);
-        boardButtons[7] = findViewById(R.id.button7);
+        boardButtons[7] = findViewById(R.id. button7);
         boardButtons[8] = findViewById(R.id.button8);
 
         for (int i = 0; i < 9; i++) {
@@ -116,11 +122,35 @@ public class GameActivity extends AppCompatActivity {
             }
         });
 
+        // Concede button
+        Button concedeButton = findViewById(R.id.concedeButton);
+        concedeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new AlertDialog.Builder(GameActivity. this)
+                        .setTitle("Concede Game")
+                        .setMessage("Are you sure you want to concede?  This will count as a loss.")
+                        . setPositiveButton("Yes, Concede", (dialog, which) -> {
+                            concedeGame();
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
+            }
+        });
+
+        // Exit button
         Button exitButton = findViewById(R.id.exitButton);
         exitButton. setOnClickListener(new View. OnClickListener() {
             @Override
             public void onClick(View v) {
-                finish();
+                new AlertDialog.Builder(GameActivity. this)
+                        .setTitle("Exit Game")
+                        . setMessage("Are you sure you want to exit? This will end the game for both players.")
+                        .setPositiveButton("Yes", (dialog, which) -> {
+                            endGameAndExit();
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
             }
         });
     }
@@ -132,7 +162,7 @@ public class GameActivity extends AppCompatActivity {
             // Check if it's player's turn
             String currentTurn = currentGame.getString("current_turn");
             if (! currentTurn.equals(playerId)) {
-                Toast.makeText(this, "Not your turn!", Toast. LENGTH_SHORT).show();
+                Toast.makeText(this, "Not your turn!", Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -153,8 +183,8 @@ public class GameActivity extends AppCompatActivity {
             }
 
             // Make move
-            boardArray[position] = playerSymbol.charAt(0);
-            currentGame.put("board", new String(boardArray));
+            boardArray[position] = playerSymbol. charAt(0);
+            currentGame. put("board", new String(boardArray));
 
             // Check for win or draw
             String winner = checkWinner(boardArray);
@@ -199,7 +229,7 @@ public class GameActivity extends AppCompatActivity {
             });
 
         } catch (JSONException e) {
-            Toast.makeText(this, "Error: " + e. getMessage(), Toast.LENGTH_SHORT). show();
+            Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -208,25 +238,97 @@ public class GameActivity extends AppCompatActivity {
         pollRunnable = new Runnable() {
             @Override
             public void run() {
-                ApiHelper. getGame(gameCode, new ApiHelper.ApiCallback() {
+                if (! isPolling) return;
+
+                ApiHelper.getGame(gameCode, new ApiHelper.ApiCallback() {
                     @Override
                     public void onSuccess(JSONObject game) {
-                        currentGame = game;
-                        updateUI(game);
+                        runOnUiThread(() -> {
+                            try {
+                                // Check if a player left (became null or empty)
+                                String newPlayer1Id = game.optString("player1_id", null);
+                                String newPlayer2Id = game.optString("player2_id", null);
+
+                                boolean player1Left = player1Id != null && (newPlayer1Id == null || newPlayer1Id.isEmpty() || "null".equals(newPlayer1Id));
+                                boolean player2Left = player2Id != null && (newPlayer2Id == null || newPlayer2Id.isEmpty() || "null".equals(newPlayer2Id));
+
+                                if (player1Left || player2Left) {
+                                    // A player disconnected
+                                    stopPolling();
+                                    new AlertDialog.Builder(GameActivity. this)
+                                            .setTitle("Game Ended")
+                                            .setMessage("Your opponent has left the game.")
+                                            .setCancelable(false)
+                                            .setPositiveButton("OK", (dialog, which) -> {
+                                                finish();
+                                            })
+                                            .show();
+                                    return;
+                                }
+
+                                // Check if game was ended
+                                String status = game.optString("status", "");
+                                if ("ended".equals(status)) {
+                                    stopPolling();
+                                    new AlertDialog.Builder(GameActivity.this)
+                                            .setTitle("Game Ended")
+                                            .setMessage("The game has been ended.")
+                                            .setCancelable(false)
+                                            .setPositiveButton("OK", (dialog, which) -> {
+                                                finish();
+                                            })
+                                            . show();
+                                    return;
+                                }
+
+                                currentGame = game;
+                                updateUI(game);
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error processing game update", e);
+                            }
+                        });
 
                         // Continue polling
-                        pollHandler.postDelayed(pollRunnable, 1000);
+                        if (isPolling) {
+                            pollHandler.postDelayed(pollRunnable, POLLING_INTERVAL);
+                        }
                     }
 
                     @Override
                     public void onError(String error) {
-                        // Retry polling
-                        pollHandler.postDelayed(pollRunnable, 2000);
+                        Log.e(TAG, "Error polling game: " + error);
+
+                        // If game not found, player might have deleted it
+                        if (error.contains("not found")) {
+                            runOnUiThread(() -> {
+                                stopPolling();
+                                new AlertDialog.Builder(GameActivity.this)
+                                        .setTitle("Game Ended")
+                                        .setMessage("The game has been ended.")
+                                        . setCancelable(false)
+                                        .setPositiveButton("OK", (dialog, which) -> {
+                                            finish();
+                                        })
+                                        .show();
+                            });
+                        } else {
+                            // Retry polling
+                            if (isPolling) {
+                                pollHandler.postDelayed(pollRunnable, POLLING_INTERVAL * 2);
+                            }
+                        }
                     }
                 });
             }
         };
         pollHandler.post(pollRunnable);
+    }
+
+    private void stopPolling() {
+        isPolling = false;
+        if (pollHandler != null && pollRunnable != null) {
+            pollHandler.removeCallbacks(pollRunnable);
+        }
     }
 
     private void forceRefresh() {
@@ -254,6 +356,7 @@ public class GameActivity extends AppCompatActivity {
             for (int i = 0; i < 9; i++) {
                 if (boardArray[i] == '_') {
                     boardButtons[i].setText("");
+                    boardButtons[i]. setEnabled(true);
                 } else {
                     boardButtons[i].setText(String.valueOf(boardArray[i]));
                 }
@@ -264,41 +367,45 @@ public class GameActivity extends AppCompatActivity {
             int player2Score = game.getInt("player2_score");
             int draws = game.getInt("draw_count");
 
-            // Determine which score is "mine" and which is "opponent's"
             int myScore = 0;
             int opponentScore = 0;
 
-            if (playerId. equals(player1Id)) {
-                // I am player 1
+            if (playerId.equals(player1Id)) {
                 myScore = player1Score;
                 opponentScore = player2Score;
             } else {
-                // I am player 2
                 myScore = player2Score;
                 opponentScore = player1Score;
             }
 
-            // Display: My wins, Draws, My losses (opponent wins)
             player1ScoreText.setText(String.valueOf(myScore));
-            drawScoreText.setText(String.valueOf(draws));
-            player2ScoreText.setText(String.valueOf(opponentScore));
+            drawScoreText.setText(String. valueOf(draws));
+            player2ScoreText.setText(String. valueOf(opponentScore));
 
             // Update turn indicators
             String status = game.getString("status");
+
+            // AUTO-DISMISS dialog if board was cleared by other player
+            if ("playing".equals(status) && resultDialog != null && resultDialog.isShowing()) {
+                resultDialog.dismiss();
+                dialogShownForCurrentRound = false;
+                Toast.makeText(this, "Opponent cleared the board.  New round!", Toast.LENGTH_SHORT).show();
+            }
+
             if ("playing".equals(status)) {
                 String currentTurn = game.getString("current_turn");
                 if (currentTurn.equals(player1Id)) {
-                    player1Indicator.setBackgroundColor(Color.parseColor("#4CAF50"));
-                    player2Indicator.setBackgroundColor(Color.parseColor("#CCCCCC"));
+                    player1Indicator.setBackgroundColor(getResources().getColor(R.color.player1_color));
+                    player2Indicator.setBackgroundColor(getResources().getColor(R.color.turn_inactive));
                 } else {
-                    player1Indicator.setBackgroundColor(Color.parseColor("#CCCCCC"));
-                    player2Indicator.setBackgroundColor(Color.parseColor("#FF9800"));
+                    player1Indicator.setBackgroundColor(getResources().getColor(R.color.turn_inactive));
+                    player2Indicator.setBackgroundColor(getResources(). getColor(R.color.player2_color));
                 }
             }
 
             // Show result dialog if game is finished
             boolean showDialog = game.optBoolean("show_result_dialog", false);
-            if ("finished".equals(status) && showDialog && !dialogShownForCurrentRound) {
+            if ("finished".equals(status) && showDialog && ! dialogShownForCurrentRound) {
                 dialogShownForCurrentRound = true;
                 showResultDialog(game);
             }
@@ -314,13 +421,13 @@ public class GameActivity extends AppCompatActivity {
         }
 
         resultDialog = new Dialog(this);
-        resultDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        resultDialog. requestWindowFeature(Window.FEATURE_NO_TITLE);
         resultDialog.setContentView(R.layout.dialog_game_result);
-        resultDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color. TRANSPARENT));
+        resultDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         resultDialog.setCancelable(false);
 
-        TextView resultText = resultDialog.findViewById(R.id.resultText);
-        TextView resultMessage = resultDialog.findViewById(R.id.resultMessage);
+        TextView resultText = resultDialog.findViewById(R.id. resultText);
+        TextView resultMessage = resultDialog.findViewById(R. id.resultMessage);
         Button clearBoardButton = resultDialog.findViewById(R.id.clearBoardButton);
 
         String resultString = "";
@@ -332,7 +439,7 @@ public class GameActivity extends AppCompatActivity {
             if ("Draw".equals(winner)) {
                 resultString = "DRAW! ";
                 messageString = "It's a tie!";
-                resultText.setTextColor(getResources().getColor(R.color.draw_color));
+                resultText.setTextColor(getResources().getColor(R. color.draw_color));
             } else if (winner != null && winner.equals(playerId)) {
                 resultString = "YOU WIN!";
                 messageString = "🎉 Congratulations! 🎉";
@@ -358,37 +465,132 @@ public class GameActivity extends AppCompatActivity {
             }
         });
 
-        resultDialog.show();
+        resultDialog. show();
     }
 
     private void clearBoard() {
-        if (currentGame == null) return;
-
         try {
             // Reset board
             currentGame.put("board", "_________");
             currentGame.put("status", "playing");
             currentGame.put("winner", JSONObject.NULL);
             currentGame.put("show_result_dialog", false);
+
             dialogShownForCurrentRound = false;
 
-            // Update in database
-            ApiHelper.updateGame(currentGame, new ApiHelper. ApiCallback() {
+            // Reset turn to player 1
+            currentGame.put("current_turn", player1Id);
+
+            // Update the game on server
+            ApiHelper.updateGame(currentGame, new ApiHelper.ApiCallback() {
                 @Override
-                public void onSuccess(JSONObject game) {
-                    currentGame = game;
-                    updateUI(game);
-                    Toast.makeText(GameActivity. this, "Board cleared!", Toast. LENGTH_SHORT).show();
+                public void onSuccess(JSONObject response) {
+                    runOnUiThread(() -> {
+                        try {
+                            currentGame = response;
+                            updateUI(currentGame);
+                            Toast.makeText(GameActivity. this, "Board cleared!", Toast. LENGTH_SHORT).show();
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error after clearing board", e);
+                        }
+                    });
                 }
 
                 @Override
                 public void onError(String error) {
-                    Toast.makeText(GameActivity.this, "Error clearing board: " + error, Toast.LENGTH_SHORT).show();
+                    runOnUiThread(() -> {
+                        Toast.makeText(GameActivity.this, "Error clearing board: " + error, Toast.LENGTH_SHORT).show();
+                    });
                 }
             });
 
         } catch (JSONException e) {
-            Toast.makeText(this, "Error: " + e.getMessage(), Toast. LENGTH_SHORT).show();
+            Toast. makeText(this, "Error clearing board: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void concedeGame() {
+        try {
+            // Determine the winner (the opponent)
+            String opponentId = playerId.equals(player1Id) ? player2Id : player1Id;
+
+            currentGame.put("status", "finished");
+            currentGame.put("winner", opponentId);
+            currentGame.put("show_result_dialog", true);
+
+            // Update scores
+            if (playerId.equals(player1Id)) {
+                // I'm player 1, so player 2 wins
+                int player2Score = currentGame.getInt("player2_score");
+                currentGame.put("player2_score", player2Score + 1);
+            } else {
+                // I'm player 2, so player 1 wins
+                int player1Score = currentGame.getInt("player1_score");
+                currentGame. put("player1_score", player1Score + 1);
+            }
+
+            dialogShownForCurrentRound = false;
+
+            ApiHelper.updateGame(currentGame, new ApiHelper.ApiCallback() {
+                @Override
+                public void onSuccess(JSONObject response) {
+                    runOnUiThread(() -> {
+                        try {
+                            currentGame = response;
+                            updateUI(currentGame);
+                            Toast.makeText(GameActivity.this, "You conceded the game", Toast.LENGTH_SHORT).show();
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error after conceding", e);
+                        }
+                    });
+                }
+
+                @Override
+                public void onError(String error) {
+                    runOnUiThread(() -> {
+                        Toast. makeText(GameActivity.this, "Error conceding: " + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            });
+
+        } catch (JSONException e) {
+            Toast.makeText(this, "Error conceding game: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void endGameAndExit() {
+        try {
+            // Remove this player from the game
+            if (playerId.equals(player1Id)) {
+                currentGame. put("player1_id", JSONObject.NULL);
+            } else {
+                currentGame.put("player2_id", JSONObject. NULL);
+            }
+
+            currentGame.put("status", "ended");
+
+            ApiHelper.updateGame(currentGame, new ApiHelper.ApiCallback() {
+                @Override
+                public void onSuccess(JSONObject response) {
+                    runOnUiThread(() -> {
+                        stopPolling();
+                        finish();
+                    });
+                }
+
+                @Override
+                public void onError(String error) {
+                    runOnUiThread(() -> {
+                        // Exit anyway
+                        stopPolling();
+                        finish();
+                    });
+                }
+            });
+
+        } catch (JSONException e) {
+            stopPolling();
+            finish();
         }
     }
 
@@ -432,10 +634,8 @@ public class GameActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
-        if (pollHandler != null && pollRunnable != null) {
-            pollHandler.removeCallbacks(pollRunnable);
-        }
+        super. onDestroy();
+        stopPolling();
         if (resultDialog != null && resultDialog.isShowing()) {
             resultDialog.dismiss();
         }
