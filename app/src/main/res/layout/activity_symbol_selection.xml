@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@color/background"
+    android:gravity="center">
+
+    <TextView
+        android:id="@+id/statusText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Game Code: XXXXX"
+        android:textSize="18sp"
+        android:textColor="@color/text_secondary"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/instructionText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Choose your symbol!"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="@color/primary"
+        android:layout_marginBottom="48dp"
+        android:gravity="center" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <Button
+            android:id="@+id/selectXButton"
+            android:layout_width="140dp"
+            android:layout_height="140dp"
+            android:text="X"
+            android:textSize="72sp"
+            android:textStyle="bold"
+            android:backgroundTint="@color/button_x"
+            android:layout_margin="16dp" />
+
+        <Button
+            android:id="@+id/selectOButton"
+            android:layout_width="140dp"
+            android:layout_height="140dp"
+            android:text="O"
+            android:textSize="72sp"
+            android:textStyle="bold"
+            android:backgroundTint="@color/button_o"
+            android:layout_margin="16dp" />
+
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Both players must choose their symbols"
+        android:textSize="14sp"
+        android:textColor="@color/text_hint"
+        android:layout_marginTop="32dp"
+        android:gravity="center" />
+
+</LinearLayout>

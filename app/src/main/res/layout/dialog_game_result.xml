@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="300dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@color/card_background"
+    android:gravity="center">
+
+    <TextView
+        android:id="@+id/resultText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="YOU WIN!"
+        android:textSize="32sp"
+        android:textStyle="bold"
+        android:textColor="@color/win_color"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/resultMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Congratulations!"
+        android:textSize="18sp"
+        android:textColor="@color/text_secondary"
+        android:gravity="center"
+        android:layout_marginBottom="24dp" />
+
+    <Button
+        android:id="@+id/clearBoardButton"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="CLEAR BOARD"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:backgroundTint="@color/button_primary" />
+
+</LinearLayout>
